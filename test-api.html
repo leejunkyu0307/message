@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bed24 API 연동 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #cce7ff; color: #004085; border: 1px solid #b8daff; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .log-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Bed24 API 연동 테스트</h1>
+    
+    <div class="test-container">
+        <h2>API 연결 상태</h2>
+        <div id="connectionStatus" class="test-result info">연결 상태 확인 중...</div>
+        <button onclick="testConnection()">연결 테스트</button>
+        <button onclick="testAuthentication()">인증 테스트</button>
+    </div>
+
+    <div class="test-container">
+        <h2>데이터 로드 테스트</h2>
+        <button onclick="testBookings()">예약 데이터 로드</button>
+        <button onclick="testMessages()">메시지 데이터 로드</button>
+        <button onclick="testProperties()">속성 정보 로드</button>
+        <div id="dataResults"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>메시지 전송 테스트</h2>
+        <div>
+            <input type="text" id="testBookingId" placeholder="테스트용 예약 ID" style="width: 200px; padding: 8px;">
+            <input type="text" id="testMessage" placeholder="테스트 메시지" style="width: 300px; padding: 8px;">
+            <button onclick="testSendMessage()">메시지 전송 테스트</button>
+        </div>
+        <div id="messageResults"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>실시간 로그</h2>
+        <button onclick="clearLog()">로그 지우기</button>
+        <div id="logArea" class="log-area"></div>
+    </div>
+
+    <script src="api-config.js"></script>
+    <script>
+        let apiManager = null;
+        let logCount = 0;
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            apiManager = window.bed24API;
+            log('API 테스트 페이지 로드됨');
+            testConnection();
+        });
+
+        // 로그 함수
+        function log(message, type = 'info') {
+            logCount++;
+            const timestamp = new Date().toLocaleTimeString();
+            const logArea = document.getElementById('logArea');
+            const logClass = type === 'error' ? 'color: red' : type === 'success' ? 'color: green' : 'color: black';
+            
+            logArea.innerHTML += `<div style="${logClass}">[${timestamp}] ${message}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+
+            // 로그가 너무 많아지면 정리
+            if (logCount > 100) {
+                const lines = logArea.innerHTML.split('</div>');
+                logArea.innerHTML = lines.slice(-50).join('</div>');
+                logCount = 50;
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('logArea').innerHTML = '';
+            logCount = 0;
+        }
+
+        // 연결 테스트
+        async function testConnection() {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.className = 'test-result info';
+            statusDiv.textContent = '연결 테스트 중...';
+            
+            try {
+                log('API 연결 테스트 시작');
+                
+                if (!apiManager) {
+                    throw new Error('API 매니저가 초기화되지 않음');
+                }
+
+                const isConnected = await apiManager.checkConnection();
+                
+                if (isConnected) {
+                    statusDiv.className = 'test-result success';
+                    statusDiv.textContent = '✅ API 연결 성공';
+                    log('API 연결 테스트 성공', 'success');
+                } else {
+                    statusDiv.className = 'test-result error';
+                    statusDiv.textContent = '❌ API 연결 실패';
+                    log('API 연결 테스트 실패', 'error');
+                }
+                
+            } catch (error) {
+                statusDiv.className = 'test-result error';
+                statusDiv.textContent = `❌ 연결 오류: ${error.message}`;
+                log(`연결 테스트 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 인증 테스트
+        async function testAuthentication() {
+            try {
+                log('인증 테스트 시작');
+                
+                const authResult = await apiManager.authenticate();
+                
+                if (authResult) {
+                    log('인증 테스트 성공', 'success');
+                    showResult('connectionStatus', '✅ 인증 성공', 'success');
+                } else {
+                    log('인증 테스트 실패', 'error');
+                    showResult('connectionStatus', '❌ 인증 실패', 'error');
+                }
+                
+            } catch (error) {
+                log(`인증 테스트 오류: ${error.message}`, 'error');
+                showResult('connectionStatus', `❌ 인증 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 예약 데이터 테스트
+        async function testBookings() {
+            try {
+                log('예약 데이터 로드 테스트 시작');
+                
+                const bookings = await APIIntegration.syncBookingData();
+                
+                log(`예약 데이터 로드 성공: ${bookings.length}개 예약`, 'success');
+                showResult('dataResults', `✅ 예약 데이터: ${bookings.length}개 로드됨`, 'success');
+                
+                // 첫 번째 예약 정보 표시
+                if (bookings.length > 0) {
+                    const firstBooking = bookings[0];
+                    log(`첫 번째 예약: ID=${firstBooking.id}, 이름=${firstBooking.firstName} ${firstBooking.lastName}`);
+                }
+                
+            } catch (error) {
+                log(`예약 데이터 로드 오류: ${error.message}`, 'error');
+                showResult('dataResults', `❌ 예약 데이터 로드 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // 메시지 데이터 테스트
+        async function testMessages() {
+            try {
+                log('메시지 데이터 로드 테스트 시작');
+                
+                const messages = await APIIntegration.syncMessages();
+                const messageCount = Object.keys(messages).length;
+                
+                log(`메시지 데이터 로드 성공: ${messageCount}개 대화`, 'success');
+                showResult('dataResults', `✅ 메시지 데이터: ${messageCount}개 대화 로드됨`, 'success');
+                
+            } catch (error) {
+                log(`메시지 데이터 로드 오류: ${error.message}`, 'error');
+                showResult('dataResults', `❌ 메시지 데이터 로드 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // 속성 정보 테스트
+        async function testProperties() {
+            try {
+                log('속성 정보 로드 테스트 시작');
+                
+                const properties = [];
+                for (const [hostelKey, propertyId] of Object.entries(apiManager.propertyIds)) {
+                    const property = await apiManager.getProperty(propertyId);
+                    properties.push({hostel: hostelKey, property});
+                }
+                
+                log(`속성 정보 로드 성공: ${properties.length}개 속성`, 'success');
+                showResult('dataResults', `✅ 속성 정보: ${properties.length}개 로드됨`, 'success');
+                
+            } catch (error) {
+                log(`속성 정보 로드 오류: ${error.message}`, 'error');
+                showResult('dataResults', `❌ 속성 정보 로드 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // 메시지 전송 테스트
+        async function testSendMessage() {
+            const bookingId = document.getElementById('testBookingId').value;
+            const message = document.getElementById('testMessage').value;
+            
+            if (!bookingId || !message) {
+                showResult('messageResults', '❌ 예약 ID와 메시지를 입력해주세요', 'error');
+                return;
+            }
+            
+            try {
+                log(`메시지 전송 테스트 시작: 예약 ID=${bookingId}`);
+                
+                const result = await apiManager.sendMessage(bookingId, '테스트 메시지', message);
+                
+                log('메시지 전송 테스트 성공', 'success');
+                showResult('messageResults', '✅ 메시지 전송 성공', 'success');
+                
+            } catch (error) {
+                log(`메시지 전송 테스트 오류: ${error.message}`, 'error');
+                showResult('messageResults', `❌ 메시지 전송 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // 결과 표시 헬퍼 함수
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = message;
+            
+            // 기존 결과 제거하고 새 결과 추가
+            const existingResults = element.querySelectorAll('.test-result');
+            existingResults.forEach(result => result.remove());
+            element.appendChild(resultDiv);
+        }
+
+        // 자동 테스트 실행
+        async function runAllTests() {
+            log('전체 테스트 시작');
+            
+            await testConnection();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testAuthentication();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testBookings();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testMessages();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await testProperties();
+            
+            log('전체 테스트 완료');
+        }
+
+        // 5초 후 자동 테스트 실행 (선택사항)
+        // setTimeout(runAllTests, 5000);
+    </script>
+</body>
+</html>

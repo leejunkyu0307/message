@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 호스텔 메시지 관리 시스템 - Bed24 기반</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --success-color: #4CAF50;
+            --warning-color: #ff9800;
+            --error-color: #f44336;
+            --info-color: #2196F3;
+            --background-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --border-radius: 15px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', Roboto, sans-serif;
+            background: var(--background-gradient);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px 30px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e1e5e9;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: var(--background-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .connection-status.connected {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4CAF50;
+            border: 2px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .connection-status.connecting {
+            background: rgba(255, 152, 0, 0.1);
+            color: #ff9800;
+            border: 2px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .connection-status.disconnected {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+            border: 2px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Layout - Bed24 스타일 기반 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 380px 1fr 350px;
+            gap: 20px;
+            height: calc(100vh - 200px);
+            min-height: 700px;
+            background: #f5f6fa;
+        }
+
+        /* Card Styles - Bed24 기반 */
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e1e5e9;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            background: #2c3e50;
+            color: white;
+            font-weight: 600;
+            font-size: 1.0em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .card-content {
+            padding: 20px;
+            height: calc(100% - 70px);
+            overflow-y: auto;
+        }
+
+        /* 호스텔 선택 패널 - Bed24 디자인 */
+        .hostel-selector {
+            margin-bottom: 16px;
+        }
+
+        .hostel-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .hostel-tab {
+            padding: 10px 14px;
+            background: #f8f9fc;
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        .hostel-tab:hover {
+            background: #e8f4fd;
+            border-color: #3498db;
+        }
+
+        .hostel-tab.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+
+        .hostel-tab .hostel-name {
+            font-size: 1em;
+            margin-bottom: 4px;
+        }
+
+        .hostel-tab .hostel-stats {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+
+        /* 고객 목록 - Bed24 스타일 */
+        .guest-filters {
+            margin-bottom: 12px;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-bottom: 6px;
+            transition: border-color 0.2s ease;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 5px 10px;
+            background: #f8f9fc;
+            border: 1px solid #e1e5e9;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.75em;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover {
+            background: #e8f4fd;
+            border-color: #3498db;
+        }
+
+        .filter-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+
+        .guest-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .guest-item {
+            padding: 8px 12px;
+            background: #ffffff;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid #e1e5e9;
+            position: relative;
+            border-left: 3px solid transparent;
+        }
+
+        .guest-item:hover {
+            background: #f8fcff;
+            border-left-color: #3498db;
+        }
+
+        .guest-item.active {
+            background: #e8f4fd;
+            border-left-color: #2980b9;
+            border-color: #3498db;
+        }
+
+        .guest-item.unread::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            background: var(--error-color);
+            border-radius: 50%;
+        }
+
+        .guest-name {
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-bottom: 2px;
+            color: #2c3e50;
+        }
+
+        .guest-info {
+            font-size: 0.75em;
+            color: #7f8c8d;
+            margin-bottom: 3px;
+        }
+
+        .guest-status {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 2px;
+            font-size: 0.65em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .guest-status.checkin {
+            background: #d5edf5;
+            color: #2980b9;
+        }
+
+        .guest-status.checkout {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .guest-status.current {
+            background: #d1ecf1;
+            color: #155724;
+        }
+
+        /* 메시지 영역 - Bed24 디자인 */
+        .message-area {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .message-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e1e5e9;
+            background: #f8f9fc;
+        }
+
+        .message-header h3 {
+            margin-bottom: 4px;
+            color: #2c3e50;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .message-header p {
+            color: #7f8c8d;
+            font-size: 0.85em;
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 16px 20px;
+            overflow-y: auto;
+            max-height: 450px;
+            background: #ffffff;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            max-width: 75%;
+            position: relative;
+            font-size: 0.9em;
+        }
+
+        .message.sent {
+            background: #3498db;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.received {
+            background: #ecf0f1;
+            color: #2c3e50;
+            border-bottom-left-radius: 2px;
+        }
+
+        .message-content {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .message-time {
+            font-size: 0.75em;
+            opacity: 0.7;
+        }
+
+        .message-input-area {
+            padding: 16px 20px;
+            border-top: 1px solid #e1e5e9;
+            background: #f8f9fc;
+        }
+
+        .message-input-container {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: none;
+            max-height: 80px;
+            min-height: 36px;
+            font-family: inherit;
+            font-size: 0.9em;
+            transition: border-color 0.2s ease;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .send-button {
+            padding: 10px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: background-color 0.2s ease;
+        }
+
+        .send-button:hover {
+            background: #2980b9;
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 대시보드 & 빠른 작업 - Bed24 스타일 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            padding: 12px;
+            background: #f8f9fc;
+            border-radius: 4px;
+            text-align: center;
+            border: 1px solid #e1e5e9;
+            transition: border-color 0.2s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #3498db;
+        }
+
+        .stat-number {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.7em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .quick-actions {
+            margin-bottom: 20px;
+        }
+
+        .quick-actions h4 {
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .action-btn {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            background: #f8f9fc;
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            font-size: 0.85em;
+        }
+
+        .action-btn:hover {
+            background: #e8f4fd;
+            border-color: #3498db;
+        }
+
+        .quick-templates {
+            margin-bottom: 20px;
+        }
+
+        .quick-templates h4 {
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .template-btn {
+            display: block;
+            width: 100%;
+            padding: 6px 10px;
+            margin-bottom: 3px;
+            background: #f8f9fc;
+            border: 1px solid #e1e5e9;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            font-size: 0.75em;
+            line-height: 1.3;
+        }
+
+        .template-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+
+        /* 알림 시스템 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: var(--success-color);
+        }
+
+        .notification.error {
+            background: var(--error-color);
+        }
+
+        .notification.info {
+            background: var(--info-color);
+        }
+
+        .notification.warning {
+            background: var(--warning-color);
+        }
+
+        /* 로딩 오버레이 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 300px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 280px 1fr;
+                grid-template-rows: 1fr;
+            }
+            .dashboard-panel {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .main-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+                gap: 15px;
+            }
+            
+            .guest-panel {
+                max-height: 300px;
+            }
+            
+            .message-area {
+                min-height: 400px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 챗봇 인터페이스 준비 */
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: var(--background-gradient);
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            transition: var(--transition);
+            z-index: 100;
+        }
+
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 40px 20px;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 12px;
+            background: #f1f3f4;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            max-width: 60px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>통합 호스텔 메시지 관리 시스템</h1>
+            <p>Bed24 기반 호스텔 메시지 관리 시스템 - 다다 하우스 & 제이가든 명동역</p>
+            <div class="connection-status" id="connectionStatus">
+                <div class="status-indicator" style="background: #ff9800;"></div>
+                <span>Bed24 API 연결 중...</span>
+            </div>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Left Panel: 호스텔 & 고객 선택 -->
+            <div class="card guest-panel">
+                <div class="card-header">
+                    <span>🏢</span>
+                    <span>호스텔 & 고객 관리</span>
+                </div>
+                <div class="card-content">
+                    <!-- 호스텔 선택 -->
+                    <div class="hostel-selector">
+                        <h4 style="margin-bottom: 10px; color: #667eea;">호스텔 선택</h4>
+                        <div class="hostel-tabs" id="hostelTabs">
+                            <div class="hostel-tab active" data-hostel="all">
+                                <div class="hostel-name">전체 호스텔</div>
+                                <div class="hostel-stats">모든 메시지</div>
+                            </div>
+                            <div class="hostel-tab" data-hostel="dada">
+                                <div class="hostel-name">다다 하우스</div>
+                                <div class="hostel-stats">ID: 12345 - 읽지않음: 3개</div>
+                            </div>
+                            <div class="hostel-tab" data-hostel="jgarden">
+                                <div class="hostel-name">제이가든 명동역</div>
+                                <div class="hostel-stats">ID: 12346 - 읽지않음: 1개</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 고객 필터 -->
+                    <div class="guest-filters">
+                        <input type="text" class="filter-input" id="guestSearch" placeholder="고객명, 방번호로 검색...">
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="all">전체</button>
+                            <button class="filter-btn" data-filter="unread">읽지않음</button>
+                            <button class="filter-btn" data-filter="checkin">체크인</button>
+                            <button class="filter-btn" data-filter="checkout">체크아웃</button>
+                            <button class="filter-btn" data-filter="current">투숙중</button>
+                        </div>
+                    </div>
+
+                    <!-- 고객 목록 -->
+                    <div class="guest-list" id="guestList">
+                        <div class="empty-state">
+                            고객 정보를 불러오는 중...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel: 메시지 영역 -->
+            <div class="card message-area">
+                <div class="message-header" id="messageHeader">
+                    <h3>고객을 선택해주세요</h3>
+                    <p>왼쪽에서 고객을 선택하면 메시지를 주고받을 수 있습니다</p>
+                </div>
+                
+                <div class="messages-container" id="messagesContainer">
+                    <div class="empty-state">
+                        메시지를 시작하려면 고객을 선택하세요
+                    </div>
+                </div>
+
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+
+                <div class="message-input-area">
+                    <div class="message-input-container">
+                        <textarea 
+                            class="message-input" 
+                            id="messageInput" 
+                            placeholder="메시지를 입력하세요..."
+                            disabled
+                        ></textarea>
+                        <button class="send-button" id="sendButton" disabled>
+                            📤 전송
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: 대시보드 & 빠른 작업 -->
+            <div class="card dashboard-panel">
+                <div class="card-header">
+                    <span>📊</span>
+                    <span>대시보드 & 빠른 작업</span>
+                </div>
+                <div class="card-content">
+                    <!-- 통계 -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number" id="totalMessages">-</div>
+                            <div class="stat-label">총 메시지</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="unreadMessages">-</div>
+                            <div class="stat-label">읽지않음</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="todayCheckins">-</div>
+                            <div class="stat-label">오늘 체크인</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="activeGuests">-</div>
+                            <div class="stat-label">투숙 고객</div>
+                        </div>
+                    </div>
+
+                    <!-- 빠른 작업 -->
+                    <div class="quick-actions">
+                        <h4>⚡ 빠른 작업</h4>
+                        <button class="action-btn" onclick="refreshAllData()">
+                            🔄 전체 새로고침
+                        </button>
+                        <button class="action-btn" onclick="exportBookings()">
+                            📥 예약 내역 내보내기
+                        </button>
+                        <button class="action-btn" onclick="startAutoRefresh(5)">
+                            ⏰ 자동 새로고침 시작 (5분)
+                        </button>
+                        <button class="action-btn" onclick="stopAutoRefresh()">
+                            ⏸️ 자동 새로고침 중지
+                        </button>
+                        <button class="action-btn" onclick="showBulkMessage()">
+                            📢 일괄 메시지 발송
+                        </button>
+                    </div>
+
+                    <!-- 빠른 답변 템플릿 -->
+                    <div class="quick-templates">
+                        <h4>💬 빠른 답변</h4>
+                        <button class="template-btn" onclick="insertTemplate('greeting')">
+                            👋 안녕하세요! 무엇을 도와드릴까요?
+                        </button>
+                        <button class="template-btn" onclick="insertTemplate('checkin')">
+                            🕐 체크인 시간은 오후 3시부터입니다
+                        </button>
+                        <button class="template-btn" onclick="insertTemplate('checkout')">
+                            🕑 체크아웃 시간은 오전 11시까지입니다
+                        </button>
+                        <button class="template-btn" onclick="insertTemplate('wifi')">
+                            📶 WiFi 비밀번호: hostel123
+                        </button>
+                        <button class="template-btn" onclick="insertTemplate('location')">
+                            📍 지하철 2호선 홍대입구역 9번 출구 도보 5분
+                        </button>
+                        <button class="template-btn" onclick="insertTemplate('thanks')">
+                            🙏 감사합니다. 즐거운 여행 되세요!
+                        </button>
+                    </div>
+
+                    <!-- Bed24 바로가기 -->
+                    <div class="quick-actions">
+                        <h4>🔗 Bed24 바로가기</h4>
+                        <button class="action-btn" onclick="openBed24Property('12345')">
+                            🏢 DADA House (ID: 12345)
+                        </button>
+                        <button class="action-btn" onclick="openBed24Property('12346')">
+                            🌿 J Garden Myeongdong (ID: 12346)
+                        </button>
+                        <button class="action-btn" onclick="openBed24Dashboard()">
+                            🔗 Bed24 대시보드 열기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 -->
+    <div class="notification" id="notification"></div>
+
+    <!-- 로딩 오버레이 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loadingText">데이터를 불러오는 중...</p>
+        </div>
+    </div>
+
+    <!-- 챗봇 토글 (향후 확장용) -->
+    <button class="chatbot-toggle" id="chatbotToggle" title="AI 챗봇 (준비중)">
+        🤖
+    </button>
+
+    <!-- API 설정 스크립트 로드 -->
+    <script src="api-config.js"></script>
+
+    <script>
+        // 전역 변수
+        let currentHostel = 'all';
+        let currentGuest = null;
+        let currentFilter = 'all';
+        let allGuests = [];
+        let allMessages = {};
+        let isAuthenticated = false;
+        let autoRefreshInterval = null;
+        let apiManager = null;
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            setupEventListeners();
+            checkAPIConnection();
+        });
+
+        // 앱 초기화
+        async function initializeApp() {
+            console.log('🚀 통합 호스텔 관리 시스템 초기화 중...');
+            
+            // API 매니저 초기화
+            apiManager = window.bed24API;
+            
+            try {
+                showLoading('Bed24 API 연결 중...');
+                const apiInitialized = await APIIntegration.initialize();
+                
+                if (apiInitialized) {
+                    isAuthenticated = true;
+                    updateConnectionStatus('connected', 'Bed24 API 연결됨');
+                    await loadInitialData();
+                } else {
+                    updateConnectionStatus('disconnected', 'Bed24 API 연결 실패');
+                    loadDummyData();
+                }
+            } catch (error) {
+                console.error('API 초기화 실패:', error);
+                updateConnectionStatus('disconnected', 'Bed24 API 연결 실패');
+                loadDummyData();
+                showNotification('API 연결에 실패하여 데모 모드로 실행됩니다', 'warning');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 호스텔 탭 이벤트
+            document.getElementById('hostelTabs').addEventListener('click', function(e) {
+                const tab = e.target.closest('.hostel-tab');
+                if (tab) {
+                    switchHostel(tab.dataset.hostel);
+                }
+            });
+
+            // 필터 버튼 이벤트
+            document.querySelector('.filter-buttons').addEventListener('click', function(e) {
+                if (e.target.classList.contains('filter-btn')) {
+                    setGuestFilter(e.target.dataset.filter);
+                }
+            });
+
+            // 고객 검색
+            document.getElementById('guestSearch').addEventListener('input', function(e) {
+                filterGuests(e.target.value);
+            });
+
+            // 메시지 입력 이벤트
+            const messageInput = document.getElementById('messageInput');
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // 전송 버튼
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+
+            // 챗봇 토글 (향후 확장)
+            document.getElementById('chatbotToggle').addEventListener('click', function() {
+                showNotification('AI 챗봇 기능은 준비 중입니다', 'info');
+            });
+        }
+
+        // API 연결 상태 확인
+        async function checkAPIConnection() {
+            try {
+                updateConnectionStatus('connecting', 'Bed24 API 연결 확인 중...');
+                
+                const response = await fetch('/api/bed24/status');
+                const result = await response.json();
+                
+                if (result.isAuthenticated) {
+                    isAuthenticated = true;
+                    updateConnectionStatus('connected', 'Bed24 API 연결됨');
+                    loadDashboardData();
+                } else {
+                    updateConnectionStatus('disconnected', 'Bed24 API 인증 필요');
+                    showNotification('Bed24 API 인증이 필요합니다', 'warning');
+                }
+            } catch (error) {
+                updateConnectionStatus('disconnected', 'Bed24 API 연결 실패');
+                showNotification('API 연결에 실패했습니다', 'error');
+                console.error('API 연결 확인 실패:', error);
+            }
+        }
+
+        // 연결 상태 업데이트
+        function updateConnectionStatus(status, text) {
+            const statusElement = document.getElementById('connectionStatus');
+            const indicator = statusElement.querySelector('.status-indicator');
+            const span = statusElement.querySelector('span');
+
+            statusElement.className = `connection-status ${status}`;
+            
+            // 상태에 따른 색상 설정
+            const colors = {
+                connected: '#4CAF50',
+                connecting: '#ff9800',
+                disconnected: '#f44336'
+            };
+            
+            indicator.style.background = colors[status];
+            span.textContent = text;
+        }
+
+        // 초기 데이터 로드
+        async function loadInitialData() {
+            if (!isAuthenticated) {
+                // 인증되지 않은 경우 더미 데이터 로드
+                loadDummyData();
+                return;
+            }
+
+            try {
+                showLoading('고객 정보를 불러오는 중...');
+                await Promise.all([
+                    loadGuests(),
+                    loadDashboardData()
+                ]);
+            } catch (error) {
+                console.error('초기 데이터 로드 실패:', error);
+                showNotification('데이터 로드에 실패했습니다', 'error');
+                loadDummyData();
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 고객 목록 로드
+        async function loadGuests() {
+            try {
+                if (!isAuthenticated) {
+                    throw new Error('API 인증되지 않음');
+                }
+
+                // Bed24 API를 통해 실제 예약 데이터 로드
+                const bookings = await APIIntegration.syncBookingData();
+                
+                allGuests = bookings.map(booking => ({
+                    id: booking.id || booking.bookId,
+                    bookingRef: booking.bookingRef || `BED24-${booking.id}`,
+                    name: `${booking.firstName || ''} ${booking.lastName || ''}`.trim() || 'Guest',
+                    email: booking.email || '',
+                    phone: booking.phone || '',
+                    room: booking.roomId || booking.room || 'N/A',
+                    status: getGuestStatus(booking),
+                    arrival: booking.arrival,
+                    departure: booking.departure,
+                    hostel: booking.hostelKey || getHostelFromRoom(booking.roomId),
+                    propertyId: booking.propertyId,
+                    totalPrice: booking.price || 0,
+                    currency: booking.currency || 'KRW',
+                    source: booking.source || 'Bed24',
+                    unreadCount: 0, // 실제 메시지에서 계산
+                    lastMessage: '새 예약',
+                    lastMessageTime: booking.created || new Date().toISOString()
+                }));
+
+                // 메시지 데이터와 동기화
+                await syncMessagesWithGuests();
+                
+                displayGuests();
+                
+            } catch (error) {
+                console.error('고객 로드 실패:', error);
+                showNotification('실제 예약 데이터 로드 실패, 데모 데이터로 전환', 'warning');
+                loadDummyData();
+            }
+        }
+
+        // 메시지와 고객 데이터 동기화
+        async function syncMessagesWithGuests() {
+            try {
+                const messages = await APIIntegration.syncMessages();
+                allMessages = messages;
+
+                // 각 고객의 읽지 않은 메시지 수와 마지막 메시지 업데이트
+                allGuests.forEach(guest => {
+                    const guestMessages = allMessages[guest.id] || [];
+                    
+                    if (guestMessages.length > 0) {
+                        const lastMessage = guestMessages[guestMessages.length - 1];
+                        guest.lastMessage = lastMessage.content;
+                        guest.lastMessageTime = lastMessage.timestamp;
+                        
+                        // 읽지 않은 메시지 수 계산 (received 타입 중 최근 것들)
+                        guest.unreadCount = guestMessages.filter(msg => 
+                            msg.type === 'received' && 
+                            new Date(msg.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+                        ).length;
+                    }
+                });
+
+            } catch (error) {
+                console.error('메시지 동기화 실패:', error);
+            }
+        }
+
+        // 더미 데이터 로드 (API 연결 실패 시)
+        function loadDummyData() {
+            allGuests = [
+                {
+                    id: '1',
+                    name: '김철수',
+                    room: '101',
+                    status: 'checkin',
+                    arrival: new Date().toISOString().split('T')[0],
+                    departure: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+                    hostel: 'dada',
+                    unreadCount: 2,
+                    lastMessage: '안녕하세요! 체크인 시간이 언제인가요?',
+                    lastMessageTime: new Date(Date.now() - 1800000).toISOString()
+                },
+                {
+                    id: '2',
+                    name: '이영희',
+                    room: '205',
+                    status: 'current',
+                    arrival: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+                    departure: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+                    hostel: 'jgarden',
+                    unreadCount: 1,
+                    lastMessage: 'WiFi 비밀번호 알려주세요',
+                    lastMessageTime: new Date(Date.now() - 3600000).toISOString()
+                },
+                {
+                    id: '3',
+                    name: 'John Smith',
+                    room: '312',
+                    status: 'checkout',
+                    arrival: new Date(Date.now() - 172800000).toISOString().split('T')[0],
+                    departure: new Date().toISOString().split('T')[0],
+                    hostel: 'dada',
+                    unreadCount: 0,
+                    lastMessage: '감사했습니다!',
+                    lastMessageTime: new Date(Date.now() - 7200000).toISOString()
+                }
+            ];
+
+            // 더미 메시지 데이터
+            allMessages = {
+                '1': [
+                    {
+                        id: 'm1',
+                        type: 'received',
+                        content: '안녕하세요! 체크인 시간이 언제인가요?',
+                        timestamp: new Date(Date.now() - 3600000).toISOString()
+                    },
+                    {
+                        id: 'm2',
+                        type: 'sent',
+                        content: '안녕하세요! 체크인 시간은 오후 3시부터입니다.',
+                        timestamp: new Date(Date.now() - 3000000).toISOString()
+                    },
+                    {
+                        id: 'm3',
+                        type: 'received',
+                        content: '감사합니다! 그럼 3시에 방문하겠습니다.',
+                        timestamp: new Date(Date.now() - 1800000).toISOString()
+                    }
+                ],
+                '2': [
+                    {
+                        id: 'm4',
+                        type: 'received',
+                        content: 'WiFi 비밀번호 알려주세요',
+                        timestamp: new Date(Date.now() - 3600000).toISOString()
+                    }
+                ],
+                '3': [
+                    {
+                        id: 'm5',
+                        type: 'sent',
+                        content: '체크아웃 도움이 필요하시면 말씀해주세요',
+                        timestamp: new Date(Date.now() - 14400000).toISOString()
+                    },
+                    {
+                        id: 'm6',
+                        type: 'received',
+                        content: '감사했습니다!',
+                        timestamp: new Date(Date.now() - 7200000).toISOString()
+                    }
+                ]
+            };
+
+            displayGuests();
+            updateDashboardStats();
+        }
+
+        // 대시보드 데이터 로드
+        async function loadDashboardData() {
+            try {
+                if (!isAuthenticated) {
+                    updateDashboardStats();
+                    return;
+                }
+
+                const [bookingsRes, messagesRes] = await Promise.all([
+                    fetch('/api/bed24/bookings'),
+                    fetch('/api/bed24/messages')
+                ]);
+
+                const bookingsData = await bookingsRes.json();
+                const messagesData = await messagesRes.json();
+
+                updateDashboardStats(bookingsData, messagesData);
+            } catch (error) {
+                console.error('대시보드 데이터 로드 실패:', error);
+                updateDashboardStats();
+            }
+        }
+
+        // 대시보드 통계 업데이트
+        function updateDashboardStats(bookingsData = null, messagesData = null) {
+            const stats = {
+                totalMessages: allGuests.reduce((sum, guest) => sum + (allMessages[guest.id]?.length || 0), 0),
+                unreadMessages: allGuests.reduce((sum, guest) => sum + guest.unreadCount, 0),
+                todayCheckins: allGuests.filter(g => g.status === 'checkin').length,
+                activeGuests: allGuests.filter(g => g.status === 'current').length
+            };
+
+            document.getElementById('totalMessages').textContent = stats.totalMessages;
+            document.getElementById('unreadMessages').textContent = stats.unreadMessages;
+            document.getElementById('todayCheckins').textContent = stats.todayCheckins;
+            document.getElementById('activeGuests').textContent = stats.activeGuests;
+        }
+
+        // 호스텔 전환
+        function switchHostel(hostelId) {
+            currentHostel = hostelId;
+            
+            // 호스텔 탭 활성화
+            document.querySelectorAll('.hostel-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-hostel="${hostelId}"]`).classList.add('active');
+            
+            // 고객 목록 필터링
+            displayGuests();
+            
+            showNotification(`${getHostelName(hostelId)}로 전환되었습니다`, 'info');
+        }
+
+        // 고객 필터 설정
+        function setGuestFilter(filter) {
+            currentFilter = filter;
+            
+            // 필터 버튼 활성화
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+            
+            displayGuests();
+        }
+
+        // 고객 목록 표시
+        function displayGuests() {
+            const guestList = document.getElementById('guestList');
+            
+            let filteredGuests = allGuests;
+            
+            // 호스텔 필터
+            if (currentHostel !== 'all') {
+                filteredGuests = filteredGuests.filter(guest => guest.hostel === currentHostel);
+            }
+            
+            // 상태 필터
+            if (currentFilter !== 'all') {
+                switch(currentFilter) {
+                    case 'unread':
+                        filteredGuests = filteredGuests.filter(guest => guest.unreadCount > 0);
+                        break;
+                    case 'checkin':
+                        filteredGuests = filteredGuests.filter(guest => guest.status === 'checkin');
+                        break;
+                    case 'checkout':
+                        filteredGuests = filteredGuests.filter(guest => guest.status === 'checkout');
+                        break;
+                    case 'current':
+                        filteredGuests = filteredGuests.filter(guest => guest.status === 'current');
+                        break;
+                }
+            }
+            
+            if (filteredGuests.length === 0) {
+                guestList.innerHTML = '<div class="empty-state">해당하는 고객이 없습니다</div>';
+                return;
+            }
+            
+            guestList.innerHTML = filteredGuests.map(guest => `
+                <div class="guest-item ${guest.unreadCount > 0 ? 'unread' : ''}" 
+                     onclick="selectGuest('${guest.id}')" 
+                     data-guest-id="${guest.id}">
+                    <div class="guest-name">${guest.name}</div>
+                    <div class="guest-info">Room ${guest.room} • ${getHostelName(guest.hostel)}</div>
+                    <div class="guest-info">${guest.lastMessage}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                        <div class="guest-status ${guest.status}">${getStatusText(guest.status)}</div>
+                        <small style="color: #999; font-size: 0.7em;">${formatTime(guest.lastMessageTime)}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 고객 선택
+        function selectGuest(guestId) {
+            currentGuest = allGuests.find(g => g.id === guestId);
+            if (!currentGuest) return;
+            
+            // 선택된 고객 하이라이트
+            document.querySelectorAll('.guest-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-guest-id="${guestId}"]`).classList.add('active');
+            
+            // 메시지 헤더 업데이트
+            updateMessageHeader();
+            
+            // 메시지 로드
+            loadGuestMessages(guestId);
+            
+            // 입력창 활성화
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+            
+            // 읽지 않은 메시지 수 업데이트
+            currentGuest.unreadCount = 0;
+            displayGuests();
+            updateDashboardStats();
+        }
+
+        // 메시지 헤더 업데이트
+        function updateMessageHeader() {
+            const header = document.getElementById('messageHeader');
+            header.innerHTML = `
+                <h3>${currentGuest.name}</h3>
+                <p>Room ${currentGuest.room} • ${getHostelName(currentGuest.hostel)} • ${getStatusText(currentGuest.status)}</p>
+            `;
+        }
+
+        // 고객 메시지 로드
+        function loadGuestMessages(guestId) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messages = allMessages[guestId] || [];
+            
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = '<div class="empty-state">아직 메시지가 없습니다. 첫 메시지를 보내보세요!</div>';
+                return;
+            }
+            
+            messagesContainer.innerHTML = messages.map(message => `
+                <div class="message ${message.type}">
+                    <div class="message-content">${message.content}</div>
+                    <div class="message-time">${formatTime(message.timestamp)}</div>
+                </div>
+            `).join('');
+            
+            // 스크롤을 맨 아래로
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 메시지 전송
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            
+            if (!content || !currentGuest) return;
+            
+            try {
+                // 메시지를 즉시 화면에 표시
+                const newMessage = {
+                    id: 'm' + Date.now(),
+                    type: 'sent',
+                    content: content,
+                    timestamp: new Date().toISOString()
+                };
+                
+                if (!allMessages[currentGuest.id]) {
+                    allMessages[currentGuest.id] = [];
+                }
+                allMessages[currentGuest.id].push(newMessage);
+                
+                // 입력창 초기화
+                input.value = '';
+                
+                // 메시지 목록 업데이트
+                loadGuestMessages(currentGuest.id);
+                
+                // 고객의 마지막 메시지 업데이트
+                currentGuest.lastMessage = content;
+                currentGuest.lastMessageTime = newMessage.timestamp;
+                displayGuests();
+                
+                // 타이핑 인디케이터 표시 (시뮬레이션)
+                showTypingIndicator();
+                
+                // 실제 API 전송 (isAuthenticated일 때만)
+                if (isAuthenticated) {
+                    await sendMessageToAPI(currentGuest.id, content);
+                }
+                
+                showNotification('메시지가 전송되었습니다', 'success');
+                
+                // 3초 후 자동 응답 시뮬레이션 (더미 데이터 모드에서만)
+                if (!isAuthenticated) {
+                    setTimeout(() => {
+                        simulateGuestResponse();
+                    }, 3000);
+                }
+                
+            } catch (error) {
+                console.error('메시지 전송 실패:', error);
+                showNotification('메시지 전송에 실패했습니다', 'error');
+            }
+        }
+
+        // API로 메시지 전송
+        async function sendMessageToAPI(guestId, content) {
+            try {
+                const guest = allGuests.find(g => g.id === guestId);
+                if (!guest) {
+                    throw new Error('고객 정보를 찾을 수 없습니다');
+                }
+
+                // Bed24 API를 통해 실제 메시지 전송
+                const result = await apiManager.sendMessage(
+                    guest.bookingRef || guestId,
+                    '호스텔 메시지',
+                    content,
+                    guest.email
+                );
+
+                if (!result || !result.success) {
+                    throw new Error(result?.error || '메시지 전송 실패');
+                }
+
+                console.log('메시지 전송 성공:', result);
+                return result;
+                
+            } catch (error) {
+                console.error('API 메시지 전송 실패:', error);
+                
+                // 사용자 친화적인 에러 메시지 표시
+                const friendlyError = apiManager.handleAPIError(error);
+                showNotification(friendlyError, 'error');
+                
+                throw error;
+            }
+        }
+
+        // 타이핑 인디케이터 표시
+        function showTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.style.display = 'flex';
+            
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 3000);
+        }
+
+        // 고객 응답 시뮬레이션 (더미 모드용)
+        function simulateGuestResponse() {
+            if (!currentGuest) return;
+            
+            const responses = [
+                '감사합니다!',
+                '네, 알겠습니다.',
+                '도움이 되었어요',
+                '추가 질문이 있어요',
+                '언제 가능한가요?'
+            ];
+            
+            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+            
+            const responseMessage = {
+                id: 'm' + Date.now(),
+                type: 'received',
+                content: randomResponse,
+                timestamp: new Date().toISOString()
+            };
+            
+            allMessages[currentGuest.id].push(responseMessage);
+            
+            // 메시지 목록 업데이트
+            loadGuestMessages(currentGuest.id);
+            
+            // 고객 목록 업데이트
+            currentGuest.lastMessage = randomResponse;
+            currentGuest.lastMessageTime = responseMessage.timestamp;
+            currentGuest.unreadCount = 1;
+            displayGuests();
+            updateDashboardStats();
+            
+            showNotification('새 메시지가 도착했습니다', 'info');
+        }
+
+        // 템플릿 삽입 - Bed24 기반 다국어 메시지
+        function insertTemplate(templateType) {
+            const templates = {
+                greeting: 'Hello! Welcome to our hostel. How can I help you today? 안녕하세요! 무엇을 도와드릴까요?',
+                checkin: 'Check-in time is from 3:00 PM. Please bring your passport/ID. 체크인은 오후 3시부터 가능합니다.',
+                checkout: 'Check-out time is until 11:00 AM. Late checkout available (extra charge). 체크아웃은 오전 11시까지입니다.',
+                wifi: 'WiFi Network: hostel123 | Password: hostel123 (free unlimited)',
+                location: 'Hongik Univ. Station (Line 2) Exit 9 → 5min walk | 홍대입구역 9번출구 도보5분',
+                payment: 'Your payment has been confirmed via Bed24. Thank you!',
+                thanks: 'Thank you for staying with us! Enjoy Seoul! 감사합니다. 즐거운 서울 여행 되세요!'
+            };
+            
+            const input = document.getElementById('messageInput');
+            input.value = templates[templateType] || '';
+            input.focus();
+        }
+
+        // 고객 검색
+        function filterGuests(searchTerm) {
+            const guestItems = document.querySelectorAll('.guest-item');
+            
+            guestItems.forEach(item => {
+                const guestName = item.querySelector('.guest-name').textContent;
+                const guestInfo = item.querySelector('.guest-info').textContent;
+                
+                if (guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    guestInfo.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // 전체 데이터 새로고침
+        async function refreshAllData() {
+            showLoading('데이터를 새로고침하는 중...');
+            
+            try {
+                // API 연결 상태 재확인
+                const isConnected = await apiManager.checkConnection();
+                
+                if (isConnected) {
+                    isAuthenticated = true;
+                    updateConnectionStatus('connected', 'Bed24 API 연결됨');
+                    
+                    // 실제 데이터 다시 로드
+                    await loadGuests();
+                    await loadDashboardData();
+                    
+                    showNotification('실시간 데이터가 새로고침되었습니다', 'success');
+                } else {
+                    updateConnectionStatus('disconnected', 'Bed24 API 연결 실패');
+                    showNotification('API 연결 실패, 기존 데이터를 사용합니다', 'warning');
+                }
+                
+            } catch (error) {
+                console.error('새로고침 실패:', error);
+                updateConnectionStatus('disconnected', 'Bed24 API 연결 실패');
+                showNotification('새로고침에 실패했습니다', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 자동 새로고침 시작
+        function startAutoRefresh(intervalMinutes = 5) {
+            // 기존 인터벌 정리
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            
+            // 새 인터벌 설정 (분 단위를 밀리초로 변환)
+            autoRefreshInterval = setInterval(async () => {
+                try {
+                    console.log('자동 새로고침 실행...');
+                    await syncMessagesWithGuests();
+                    displayGuests();
+                    updateDashboardStats();
+                } catch (error) {
+                    console.error('자동 새로고침 실패:', error);
+                }
+            }, intervalMinutes * 60 * 1000);
+            
+            showNotification(`${intervalMinutes}분마다 자동 새로고침이 시작되었습니다`, 'info');
+        }
+
+        // 자동 새로고침 중지
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                showNotification('자동 새로고침이 중지되었습니다', 'info');
+            }
+        }
+
+        // 예약 내역 내보내기 (Bed24 기반)
+        function exportBookings() {
+            try {
+                const bookingData = allGuests.map(guest => ({
+                    bookingRef: guest.bookingRef || `BED24-${guest.id}`,
+                    guestName: guest.name,
+                    propertyId: guest.propertyId,
+                    hostel: getHostelName(guest.hostel),
+                    room: guest.room,
+                    arrival: guest.arrival,
+                    departure: guest.departure,
+                    status: getStatusText(guest.status),
+                    source: guest.source || 'Unknown',
+                    totalPrice: guest.totalPrice || 0,
+                    currency: guest.currency || 'KRW',
+                    lastMessage: guest.lastMessage,
+                    unreadCount: guest.unreadCount
+                }));
+                
+                const csvContent = 'data:text/csv;charset=utf-8,' + 
+                    'Booking Ref,Guest Name,Property ID,Hostel,Room,Arrival,Departure,Status,Source,Price,Currency,Last Message,Unread\n' +
+                    bookingData.map(row => Object.values(row).map(val => `"${val}"`).join(',')).join('\n');
+                
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement('a');
+                link.setAttribute('href', encodedUri);
+                link.setAttribute('download', `bed24_bookings_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showNotification('예약 내역이 CSV 파일로 내보내졌습니다', 'success');
+            } catch (error) {
+                showNotification('내보내기 중 오류가 발생했습니다', 'error');
+            }
+        }
+
+        // 일괄 메시지 발송
+        function showBulkMessage() {
+            showNotification('게스트 일괄 메시지 기능을 준비 중입니다', 'info');
+        }
+
+        // Bed24 예약 그리드 보기
+        function showBookingGrid() {
+            showNotification('Bed24 예약 그리드로 이동합니다', 'info');
+            setTimeout(() => {
+                window.open('https://beds24.com/control2.php', '_blank');
+            }, 1000);
+        }
+        
+        // Bed24 대시보드 열기
+        function openBed24Dashboard() {
+            showNotification('Bed24 대시보드를 새 창에서 엽니다', 'info');
+            window.open('https://beds24.com/control2.php', '_blank');
+        }
+        
+        // Bed24 프로퍼티 직접 열기
+        function openBed24Property(propertyId) {
+            showNotification(`Property ID ${propertyId} 관리 페이지로 이동합니다`, 'info');
+            window.open(`https://beds24.com/control2.php?pagetype=property&propid=${propertyId}`, '_blank');
+        }
+
+        // 유틸리티 함수들
+        function getGuestStatus(booking) {
+            const today = new Date().toISOString().split('T')[0];
+            const arrival = booking.arrival;
+            const departure = booking.departure;
+            
+            if (arrival === today) return 'checkin';
+            if (departure === today) return 'checkout';
+            if (arrival <= today && departure > today) return 'current';
+            return 'upcoming';
+        }
+
+        function getHostelFromRoom(roomId) {
+            if (!roomId) return 'dada';
+            const roomNum = parseInt(roomId);
+            return roomNum >= 200 ? 'jgarden' : 'dada';
+        }
+
+        function getHostelName(hostelId) {
+            const names = {
+                'all': '전체 호스텔',
+                'dada': 'DADA House (12345)',
+                'jgarden': 'J Garden Myeongdong (12346)'
+            };
+            return names[hostelId] || hostelId;
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'checkin': '도착예정',
+                'checkout': '출발예정',
+                'current': '현재투숙',
+                'upcoming': '예약확정'
+            };
+            return statusMap[status] || '상태미확인';
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+            
+            if (diffInHours < 1) {
+                return '방금 전';
+            } else if (diffInHours < 24) {
+                return `${diffInHours}시간 전`;
+            } else if (diffInHours < 24 * 7) {
+                const days = Math.floor(diffInHours / 24);
+                return `${days}일 전`;
+            } else {
+                return date.toLocaleDateString('ko-KR', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+            }
+        }
+
+        // 알림 표시
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // 로딩 표시
+        function showLoading(text = '처리 중...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
